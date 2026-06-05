@@ -27,6 +27,11 @@ const (
 	executeCommandID = 50
 )
 
+// ExecuteTimeout bounds how long Execute waits for a command's response before
+// giving up and returning "". Exposed as a var so it can be tuned and overridden
+// in tests.
+var ExecuteTimeout = 5 * time.Second
+
 type RconConfig struct {
 	Host               string
 	Port               string
@@ -96,7 +101,7 @@ func (r *Rcon) Execute(command string) string {
 	select {
 	case v := <-r.executeChan:
 		return v
-	case <-time.After(5 * time.Second):
+	case <-time.After(ExecuteTimeout):
 		return ""
 	}
 }
@@ -196,7 +201,17 @@ func (r *Rcon) byteParser(b byte) {
 
 			parser.RconParser(r.responseBody, r.Emitter)
 
-			r.executeChan <- r.responseBody
+			// Non-blocking send: if the caller's Execute already gave up
+			// (timed out) there is no receiver. A blocking send here would
+			// park byteReader forever, stop draining the socket, and turn the
+			// connection into a zombie that still reports connected=true while
+			// every subsequent command silently times out. Dropping the stale
+			// response instead keeps the reader alive so real EOFs are still
+			// detected and AutoReconnect can recover.
+			select {
+			case r.executeChan <- r.responseBody:
+			default:
+			}
 			r.responseBody = ""
 			r.lastDataBuffer = make([]byte, 0)
 		}
