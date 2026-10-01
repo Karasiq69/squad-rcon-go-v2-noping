@@ -9,7 +9,7 @@ import (
 )
 
 func listPlayers(line string) (event string, data interface{}) {
-	re := regexp.MustCompile(`ID: ([0-9]+) \| Online IDs: EOS: ([0-9a-f]{32}) steam: (\d{17}) \| Name: (.+) \| Team ID: ([0-9]+) \| Squad ID: ([0-9]+|N\/A) \| Is Leader: (True|False) \| Role: ([A-Za-z0-9_]*)\b`)
+	re := regexp.MustCompile(`ID: ([0-9]+) \| Online IDs: EOS: ([0-9a-f]{32}) steam: (\d{17}) \| Name: (.+) \| Team ID: ([0-9]+)(?: \| Party ID: [^|]*)? \| Squad ID: ([0-9]+|N\/A) \| Is Leader: (True|False) \| Role: ([A-Za-z0-9_]*)\b`)
 	strs := strings.Split(line, "\n")
 	players := make(rconTypes.Players, 0)
 
